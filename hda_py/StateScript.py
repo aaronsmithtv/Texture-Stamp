@@ -362,11 +362,9 @@ class State(object):
             return False
 
         if dev.isLeftButton():
-            self.begin_undo_block()
             self.add_projection_primitive(node)
             self.pressed = True
         else:
-            self.end_undo_block()
             self.pressed = False
 
         # Must return True to consume the event
@@ -391,21 +389,23 @@ class State(object):
         vsu.Menu.clear()
 
     def begin_undo_block(self) -> None:
-        # self.scene_viewer.beginStateUndo("Add projection primitive")
-        pass
+        self.scene_viewer.beginStateUndo("Add projection primitive")
 
     def end_undo_block(self) -> None:
-        # self.scene_viewer.endStateUndo()
-        pass
+        self.scene_viewer.endStateUndo()
 
     def add_projection_primitive(self, node: hou.Node) -> None:
         if self.pressed or node.parent().type().name() != "geo":
             return
+
+        self.begin_undo_block()
+
         input_node = node.input(1)
         if not input_node:
             parent = node.parent()
             merge_node = parent.createNode("merge", "texstamp_proj_merge")
             node.setInput(1, merge_node)
+            merge_node.moveToGoodPosition(relative_to_inputs=False)
 
             self.build_projection_primitive(parent=parent, merge=merge_node)
 
@@ -422,6 +422,8 @@ class State(object):
         else:
             input_parent = input_node.parent()
             self.build_projection_primitive(parent=input_parent, merge=input_node)
+
+        self.end_undo_block()
 
     def build_projection_primitive(self, parent: hou.Node, merge: hou.Node) -> None:
         grid_node = parent.createNode("grid", "projection_grid")
