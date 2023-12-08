@@ -19,7 +19,7 @@ class StampCursor(object):
         self.state_name = state_name
 
         self.last_line_height = 1
-        self.last_quad_size = hou.Vector2(1.0, 1.0)
+        self.last_quad_size = hou.Vector2(0.5, 0.5)
 
         self.pointer_drawable = self.init_pointer_drawable()
         self.line_drawable = self.init_line_drawable()
@@ -319,8 +319,14 @@ class State(object):
     def __init__(self, state_name, scene_viewer):
         self.state_name = state_name
         self.scene_viewer = scene_viewer
-
         self.cursor = StampCursor(self.scene_viewer, self.state_name)
+
+        self.pressed = False
+
+        self.grid_sizex = 0.5
+        self.grid_sizey = 0.5
+
+        self.grid_dist = 1.0
 
     def onMouseEvent(self, kwargs):
         """ Process mouse events
@@ -340,21 +346,28 @@ class State(object):
             mouse_dir=mouse_dir,
             intersect_geometry=geometry,
         )
+        self.grid_sizex = node.parm("vs_sizex").evalAsFloat()
+        self.grid_sizey = node.parm("vs_sizey").evalAsFloat()
+        self.grid_dist = node.parm("vs_dist").evalAsFloat()
 
         self.cursor.update_quad_size(
-            hou.Vector2(
-                node.parm("vs_sizex").evalAsFloat(),
-                node.parm("vs_sizey").evalAsFloat()
-            )
+            hou.Vector2(self.grid_sizex, self.grid_sizey)
         )
-        self.cursor.update_line_height(
-            node.parm("vs_dist").evalAsFloat()
-        )
+        self.cursor.update_line_height(self.grid_dist)
+
         if hit:
             self.cursor.show()
         else:
             self.cursor.hide()
             return False
+
+        if dev.isLeftButton():
+            self.begin_undo_block()
+            self.add_projection_primitive(node)
+            self.pressed = True
+        else:
+            self.end_undo_block()
+            self.pressed = False
 
         # Must return True to consume the event
         return False
@@ -376,6 +389,75 @@ class State(object):
 
     def onExit(self, kwargs: dict) -> None:
         vsu.Menu.clear()
+
+    def begin_undo_block(self) -> None:
+        # self.scene_viewer.beginStateUndo("Add projection primitive")
+        pass
+
+    def end_undo_block(self) -> None:
+        # self.scene_viewer.endStateUndo()
+        pass
+
+    def add_projection_primitive(self, node: hou.Node) -> None:
+        if self.pressed or node.parent().type().name() != "geo":
+            return
+        input_node = node.input(1)
+        if not input_node:
+            parent = node.parent()
+            merge_node = parent.createNode("merge", "texstamp_proj_merge")
+            node.setInput(1, merge_node)
+
+            self.build_projection_primitive(parent=parent, merge=merge_node)
+
+        elif input_node.type().name() != "merge" and not input_node.name().startswith("texstamp_"):
+            input_parent = input_node.parent()
+            merge_node = input_parent.createNode("merge", "texstamp_proj_merge")
+            node.setInput(1, merge_node)
+
+            input_connection = node.inputConnections()[1].outputIndex()
+            merge_node.setNextInput(input_node, output_index=input_connection)
+            merge_node.moveToGoodPosition(relative_to_inputs=False)
+
+            self.build_projection_primitive(parent=input_parent, merge=merge_node)
+        else:
+            input_parent = input_node.parent()
+            self.build_projection_primitive(parent=input_parent, merge=input_node)
+
+    def build_projection_primitive(self, parent: hou.Node, merge: hou.Node) -> None:
+        grid_node = parent.createNode("grid", "projection_grid")
+        grid_node.parm("sizex").set(self.grid_sizex)
+        grid_node.parm("sizey").set(self.grid_sizey)
+        grid_node.parm("ty").set(self.grid_dist)
+        grid_node.parm("rows").set(2)
+        grid_node.parm("cols").set(2)
+
+        xform_node = parent.createNode("xform", "projection_xform")
+
+        node_srt = self.cursor.xform.explode()
+
+        xform_node.parm("tx").set(node_srt["translate"][0])
+        xform_node.parm("ty").set(node_srt["translate"][1])
+        xform_node.parm("tz").set(node_srt["translate"][2])
+
+        xform_node.parm("rx").set(node_srt["rotate"][0])
+        xform_node.parm("ry").set(node_srt["rotate"][1])
+        xform_node.parm("rz").set(node_srt["rotate"][2])
+
+        norm_node = parent.createNode("normal", "projection_normal")
+
+        uv_node = parent.createNode("uvunwrap", "projection_uvunwrap")
+        uv_node.parm("spacing").set(0)
+
+        merge.setNextInput(uv_node)
+
+        uv_node.setNextInput(norm_node)
+        norm_node.setNextInput(xform_node)
+        xform_node.setNextInput(grid_node)
+
+        uv_node.moveToGoodPosition(relative_to_inputs=False)
+        norm_node.moveToGoodPosition(relative_to_inputs=False)
+        xform_node.moveToGoodPosition(relative_to_inputs=False)
+        grid_node.moveToGoodPosition(relative_to_inputs=False)
 
 
 def createViewerStateTemplate():
