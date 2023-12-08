@@ -8,7 +8,7 @@ HDA_AUTHOR = "aaronsmith.tv"
 
 
 class StampCursor(object):
-    SIZE = 0.05
+    SIZE = 1.0
     COLOR = hou.Color(1.0, 0.0, 0.0)
     PROMPT = 'Left-click to place a projection primitive.'
     POSITION_GEOMETRY = 0
@@ -18,7 +18,12 @@ class StampCursor(object):
         self.scene_viewer = scene_viewer
         self.state_name = state_name
 
-        self.drawable = self.init_drawable()
+        self.last_line_height = 1
+        self.last_quad_size = hou.Vector2(1.0, 1.0)
+
+        self.pointer_drawable = self.init_pointer_drawable()
+        self.line_drawable = self.init_line_drawable()
+        self.quad_drawable = self.init_quad_drawable()
 
         # xform is our location in geometry space
         self.xform = hou.Matrix4(self.SIZE)
@@ -32,20 +37,31 @@ class StampCursor(object):
 
         self.prompt = self.PROMPT
 
-    def init_drawable(self):
+    def init_pointer_drawable(self):
         """Create the advanced drawable and return it to self.drawable"""
         sops = hou.sopNodeTypeCategory()
         verb = sops.nodeVerb("tube")
 
         verb.setParms(
-            {"type": 1, "surftype": 4, "orient": 1, "cap": 1, "rad": hou.Vector2(0.5, 0.05), "radscale": 1.0, "height": 1.0, "rows": 2, "cols": 13},
+            {
+                "type": 1,
+                "surftype": 4,
+                "orient": 1,
+                "cap": 1,
+                "t": hou.Vector3(0.0, 0.05, 0.0),
+                "rad": hou.Vector2(0.5, 0.1),
+                "radscale": 0.05,
+                "height": 0.1,
+                "rows": 2,
+                "cols": 9},
         )
+
         cursor_geo = hou.Geometry()
         verb.execute(cursor_geo, [])
 
         cursor_draw = hou.GeometryDrawableGroup("cursor")
 
-        # adds the drawables
+        # adds highlight drawable
         cursor_draw.addDrawable(
             hou.GeometryDrawable(
                 self.scene_viewer,
@@ -53,9 +69,19 @@ class StampCursor(object):
                 "face",
                 params={
                     "color1": (0.0, 1.0, 0.0, 1.0),
-                    "color2": (0.0, 0.0, 0.0, 0.33),
+                    "color2": (0.0, 0.0, 0.0, 0.5),
                     "highlight_mode": hou.drawableHighlightMode.MatteOverGlow,
-                    "glow_width": 2,
+                    "glow_width": 4,
+                },
+            )
+        )
+        cursor_draw.addDrawable(
+            hou.GeometryDrawable(
+                self.scene_viewer,
+                hou.drawableGeometryType.Line,
+                "line",
+                params={
+                    "color1": (0.0, 0.0, 0.0, 1.0),
                 },
             )
         )
@@ -63,17 +89,110 @@ class StampCursor(object):
 
         return cursor_draw
 
-    def set_color(self, color: hou.Vector4):
-        """Change the colour of the drawable whilst editing parameters in the viewer state"""
-        self.drawable.setParams({"color1": color})
+    def init_line_drawable(self):
+        sops = hou.sopNodeTypeCategory()
+        verb = sops.nodeVerb("tube")
+
+        t_height = (self.last_line_height / 2)
+
+        verb.setParms(
+            {
+                "type": 1,
+                "surftype": 4,
+                "orient": 1,
+                "cap": 1,
+                "t": hou.Vector3(0.0, t_height, 0.0),
+                "rad": hou.Vector2(1.0, 1.0),
+                "radscale": 0.0025,
+                "height": self.last_line_height,
+                "rows": 2,
+                "cols": 13
+            },
+        )
+
+        cursor_geo = hou.Geometry()
+        verb.execute(cursor_geo, [])
+
+        cursor_draw = hou.GeometryDrawableGroup("pole")
+
+        # adds highlight drawable
+        cursor_draw.addDrawable(
+            hou.GeometryDrawable(
+                self.scene_viewer,
+                hou.drawableGeometryType.Face,
+                "face",
+                params={
+                    "color1": (0.0, 1.0, 0.0, 1.0),
+                    "color2": (0.0, 0.0, 0.0, 0.5),
+                    "highlight_mode": hou.drawableHighlightMode.MatteOverGlow,
+                    "glow_width": 4,
+                },
+            )
+        )
+        cursor_draw.setGeometry(cursor_geo)
+
+        return cursor_draw
+
+    def init_quad_drawable(self):
+        sops = hou.sopNodeTypeCategory()
+        verb = sops.nodeVerb("grid")
+
+        verb.setParms(
+            {
+                "type": 0,
+                "surftype": 4,
+                "orient": 2,
+                "size": hou.Vector2(1.0, 1.0),
+                "t": hou.Vector3(0.0, 0.0, 0.0),
+                "rows": 2,
+                "cols": 2
+            },
+        )
+
+        cursor_geo = hou.Geometry()
+        verb.execute(cursor_geo, [])
+
+        cursor_draw = hou.GeometryDrawableGroup("quad")
+
+        # adds highlight drawable
+        cursor_draw.addDrawable(
+            hou.GeometryDrawable(
+                self.scene_viewer,
+                hou.drawableGeometryType.Face,
+                "face",
+                params={
+                    "color1": (0.0, 1.0, 0.0, 0.1),
+                },
+            )
+        )
+        cursor_draw.addDrawable(
+            hou.GeometryDrawable(
+                self.scene_viewer,
+                hou.drawableGeometryType.Line,
+                "line",
+                params={
+                    "color1": (0.0, 0.0, 0.0, 1.0),
+                    "color2": (0.0, 0.0, 0.0, 0.5),
+                    "highlight_mode": hou.drawableHighlightMode.MatteOverGlow,
+                    "glow_width": 4,
+                },
+            )
+        )
+        cursor_draw.setGeometry(cursor_geo)
+
+        return cursor_draw
 
     def show(self):
         """Enable the drawable"""
-        self.drawable.show(True)
+        self.pointer_drawable.show(True)
+        self.line_drawable.show(True)
+        self.quad_drawable.show(True)
 
     def hide(self):
         """Disable the drawable"""
-        self.drawable.show(False)
+        self.pointer_drawable.show(False)
+        self.line_drawable.show(False)
+        self.quad_drawable.show(False)
 
     def update_position(
         self,
@@ -81,7 +200,7 @@ class StampCursor(object):
         mouse_point: hou.Vector3,
         mouse_dir: hou.Vector3,
         intersect_geometry: hou.Geometry,
-        rad: float = 0.05,
+        rad: float = 1.0,
     ) -> bool:
         """Overwrites the model transform with an intersection of cursor to geo.
         also records if the intersection is hitting geo, and which prim is recorded in the hit
@@ -131,9 +250,34 @@ class StampCursor(object):
         """
         try:
             current_srt = self.xform.explode()
-            current_srt.update(srt)
+            current_srt.update(srt)  # Update with new world space coordinates
             self.xform = hou.hmath.buildTransform(current_srt)
-            self.drawable.setTransform(self.xform * self.model_xform)
+
+            translation_srt = {
+                "translate": (
+                    0,
+                    self.last_line_height,
+                    0,
+                ),
+                "scale": (self.last_quad_size.x(), 1, self.last_quad_size.y()),
+                "rotate": (0, 0, 0),
+            }
+            translation_xform = hou.hmath.buildTransform(translation_srt, transform_order="trs")
+
+            scale_srt = {
+                "translate": (
+                    0,
+                    0,
+                    0,
+                ),
+                "scale": (1.0, self.last_line_height, 1.0),
+                "rotate": (0, 0, 0),
+            }
+            scale_xform = hou.hmath.buildTransform(scale_srt, transform_order="trs")
+
+            self.pointer_drawable.setTransform(self.xform * self.model_xform)
+            self.line_drawable.setTransform(scale_xform * self.xform * self.model_xform)
+            self.quad_drawable.setTransform(translation_xform * self.xform * self.model_xform)
         except hou.OperationFailed:
             return
 
@@ -156,11 +300,19 @@ class StampCursor(object):
                 The current integer handle number
         """
 
-        self.drawable.draw(handle)
+        self.pointer_drawable.draw(handle)
+        self.line_drawable.draw(handle)
+        self.quad_drawable.draw(handle)
 
     def show_prompt(self) -> None:
         """Write the tool prompt used in the viewer state"""
         self.scene_viewer.setPromptMessage(self.prompt)
+
+    def update_line_height(self, new_height: float) -> None:
+        self.last_line_height = new_height
+
+    def update_quad_size(self, new_size: hou.Vector2) -> None:
+        self.last_quad_size = new_size
 
 
 class State(object):
@@ -181,19 +333,31 @@ class State(object):
         mouse_point, mouse_dir = ui_event.ray()
 
         self.cursor.update_model_xform(ui_event.curViewport())
+
         hit = self.cursor.update_position(
             node=node,
             mouse_point=mouse_point,
             mouse_dir=mouse_dir,
             intersect_geometry=geometry,
         )
+
+        self.cursor.update_quad_size(
+            hou.Vector2(
+                node.parm("vs_sizex").evalAsFloat(),
+                node.parm("vs_sizey").evalAsFloat()
+            )
+        )
+        self.cursor.update_line_height(
+            node.parm("vs_dist").evalAsFloat()
+        )
         if hit:
             self.cursor.show()
         else:
             self.cursor.hide()
+            return False
 
         # Must return True to consume the event
-        return
+        return False
 
     def onDraw(self, kwargs):
         """ This callback is used for rendering the drawables
@@ -203,9 +367,6 @@ class State(object):
 
     def onEnter(self, kwargs: dict) -> None:
         node = kwargs["node"]
-
-        self.cursor.update_xform({"scale": (1.0, 1.0, 1.0)})
-        # hide the cursor before it has inherited a screen transform
         self.cursor.hide()
 
         # display the viewer state prompt
