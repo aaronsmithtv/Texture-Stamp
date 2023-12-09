@@ -402,6 +402,7 @@ class State(object):
 
         input_node = node.input(1)
         if not input_node:
+            # If no second input to texture-stamp node exists
             parent = node.parent()
             merge_node = parent.createNode("merge", "texstamp_proj_merge")
             node.setInput(1, merge_node)
@@ -410,6 +411,7 @@ class State(object):
             self.build_projection_primitive(parent=parent, merge=merge_node)
 
         elif input_node.type().name() != "merge" and not input_node.name().startswith("texstamp_"):
+            # If a second input exists but it does not use an approved merge
             input_parent = input_node.parent()
             merge_node = input_parent.createNode("merge", "texstamp_proj_merge")
             node.setInput(1, merge_node)
@@ -420,6 +422,7 @@ class State(object):
 
             self.build_projection_primitive(parent=input_parent, merge=merge_node)
         else:
+            # If approved merge exists
             input_parent = input_node.parent()
             self.build_projection_primitive(parent=input_parent, merge=input_node)
 
