@@ -398,35 +398,54 @@ class State(object):
         if self.pressed or node.parent().type().name() != "geo":
             return
 
-        self.begin_undo_block()
+        # self.begin_undo_block()
 
+        parent = node.parent()
         input_node = node.input(1)
+
+        subnet_name = "texstamp_proj_mergenet"
+
+        subnet = None
+        through_node = None
+
         if not input_node:
-            # If no second input to texture-stamp node exists
-            parent = node.parent()
-            merge_node = parent.createNode("merge", "texstamp_proj_merge")
-            node.setInput(1, merge_node)
-            merge_node.moveToGoodPosition(relative_to_inputs=False)
-
-            self.build_projection_primitive(parent=parent, merge=merge_node)
-
-        elif input_node.type().name() != "merge" and not input_node.name().startswith("texstamp_"):
-            # If a second input exists but it does not use an approved merge
-            input_parent = input_node.parent()
-            merge_node = input_parent.createNode("merge", "texstamp_proj_merge")
-            node.setInput(1, merge_node)
+            subnet = parent.createNode("subnet", subnet_name)
+            node.setInput(1, subnet, 0)
+            subnet.moveToGoodPosition(relative_to_inputs=False)
+        elif input_node.type().name() != "subnet" and not input_node.name().startswith(subnet_name):
+            subnet = parent.createNode("subnet", subnet_name)
+            node.setInput(1, subnet, 0)
 
             input_connection = node.inputConnections()[1].outputIndex()
-            merge_node.setNextInput(input_node, output_index=input_connection)
-            merge_node.moveToGoodPosition(relative_to_inputs=False)
+            subnet.setInput(0, input_node, input_connection)
+            subnet.moveToGoodPosition(relative_to_inputs=False)
 
-            self.build_projection_primitive(parent=input_parent, merge=merge_node)
+            through_node = input_node
         else:
-            # If approved merge exists
-            input_parent = input_node.parent()
-            self.build_projection_primitive(parent=input_parent, merge=input_node)
+            subnet = input_node
 
-        self.end_undo_block()
+        self.evaluate_subnet_merge(subnet=subnet, through_node=through_node)
+
+    def evaluate_subnet_merge(self, subnet: hou.Node, through_node: hou.Node = None) -> None:
+        merge_name = "texstamp_proj_merge"
+        merge_node = subnet.glob(f"{merge_name}*")
+        if len(merge_node) == 0:
+            merge_node = subnet.createNode("merge", merge_name)
+            if through_node:
+                merge_node.setInput(0, subnet.indirectInputs()[0])
+        else:
+            merge_node = merge_node[0]
+
+        output_name = "texstamp_proj_output"
+        output_node = subnet.glob(f"{output_name}*")
+        if len(output_node) == 0:
+            output_node = subnet.createNode("output", output_name)
+            output_node.setInput(0, merge_node)
+        else:
+            output_node = output_node[0]
+
+        self.build_projection_primitive(parent=subnet, merge=merge_node)
+        subnet.layoutChildren()
 
     def build_projection_primitive(self, parent: hou.Node, merge: hou.Node) -> None:
         grid_node = parent.createNode("grid", "projection_grid")
@@ -458,11 +477,6 @@ class State(object):
         uv_node.setNextInput(norm_node)
         norm_node.setNextInput(xform_node)
         xform_node.setNextInput(grid_node)
-
-        uv_node.moveToGoodPosition(relative_to_inputs=False)
-        norm_node.moveToGoodPosition(relative_to_inputs=False)
-        xform_node.moveToGoodPosition(relative_to_inputs=False)
-        grid_node.moveToGoodPosition(relative_to_inputs=False)
 
 
 def createViewerStateTemplate():
