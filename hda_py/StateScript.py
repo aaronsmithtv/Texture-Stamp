@@ -389,7 +389,10 @@ class State(object):
         vsu.Menu.clear()
 
     def begin_undo_block(self) -> None:
-        self.scene_viewer.beginStateUndo("Add projection primitive")
+        try:
+            self.scene_viewer.beginStateUndo("Add projection primitive")
+        except Exception as e:
+            self.end_undo_block()
 
     def end_undo_block(self) -> None:
         self.scene_viewer.endStateUndo()
@@ -398,7 +401,7 @@ class State(object):
         if self.pressed or node.parent().type().name() != "geo":
             return
 
-        # self.begin_undo_block()
+        self.begin_undo_block()
 
         parent = node.parent()
         input_node = node.input(1)
@@ -425,6 +428,8 @@ class State(object):
             subnet = input_node
 
         self.evaluate_subnet_merge(subnet=subnet, through_node=through_node)
+
+        self.end_undo_block()
 
     def evaluate_subnet_merge(self, subnet: hou.Node, through_node: hou.Node = None) -> None:
         merge_name = "texstamp_proj_merge"
