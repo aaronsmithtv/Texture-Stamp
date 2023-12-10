@@ -1,0 +1,9 @@
+#type: node
+#context: sop
+#internal: texture_stamp
+
+= Texture Stamp =
+
+"""A tool for interactive texture stamping and image projection."""
+
+The Texture Stamp SOP is a HDA that allows you to procedurally texture any geometry with an unlimited number of quads acting as image projections.
