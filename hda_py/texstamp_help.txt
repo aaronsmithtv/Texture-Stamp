@@ -1,6 +1,6 @@
 #type: node
 #context: sop
-#internal: texture_stamp
+#internal: image_stamp
 #icon: DESKTOP/pic
 
 = Texture Stamp =
@@ -9,40 +9,92 @@
 
 The Texture Stamp SOP is a HDA that allows you to procedurally texture any geometry with an unlimited number of quads acting as image projections.
 
-@Parameters
+NOTE:
+    To use this HDA, both a first input geometry and second input series of quad primitives (as projection planes) with `uv` (default UV set) and `N` (normal) attributes are required.
+
+== Input Attributes ==
+
+These attributes help maintain a procedural workflow when stamping textures onto a geometry.
+
+Prim:
+    `stamppath`:
+        A string path on disk to a stamp projection texture.
+
+        WARNING:
+            This attribute is required to specify multiple texture paths. By default, any input projection prim that does not have this attribute will use the default `error.png` texture.
+
+    `stampcolor`:
+        A 3 float vector that multiplies the colour of the stamp projection texture.
+
+@parameters
+
 === Stamp Controls ===
 
 Use Texture:
+    #id: use_bg_texture
+
     Enables loading a texture from disk as the background for projections and exports.
 
 Background Texture:
+    #id: texture_path
+
     If enabled, specify the path to the background texture.
 
+Default Colour:
+    #id: texture_col
+
+    The default background colour for the projection.
+
 BG Colour Space:
+    #id: bg_fromspace
+
     OCIO Colour space for the imported background texture.
 
 Use Default Stamp:
+    #id: use_sp_default
+
     Overrides all stamp projection textures with the current default stamp.
 
 Default Stamp:
+    #id: stamppath_default
+
     The texture path for the default stamp image. This default stamp texture will be used if there is no `s@stamppath` primitive attribute found, or if the `Use Default Stamp` override has been enabled.
 
 Stamp Colour Space:
+    #id: s_fromspace
+
     OCIO Colour space for any imported stamp texture.
 
 Flip Stamp U:
+    #id: flip_u
+
     Flips the UV space horizontally for any imported stamp textures.
 
 Reverse Stamp Normals:
+    #id: reverse_normals
+
     Reverses the projection direction for any input projection grids.
 
 Cull by Dot Product:
+    #id: check_uisect
+
     Enables a projection cull for any textures that go beyond a threshold angle difference.
 
 Cull Ratio:
+    #id: alphamult
+
     Controls the projection cull angle falloff ratio.
 
 === Output Controls ===
 
 Render:
+    #id: execute
+
     Renders and exports the current texture projection to the current `Output Picture` path.
+
+Resolution:
+    #id: res
+
+    The import and export resolution of both the background texture and final product of any stamp projections.
+
+"""Aaron Smith 2023"""
