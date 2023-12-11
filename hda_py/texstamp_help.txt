@@ -1,9 +1,48 @@
 #type: node
 #context: sop
 #internal: texture_stamp
+#icon: DESKTOP/pic
 
 = Texture Stamp =
 
 """A tool for interactive texture stamping and image projection."""
 
 The Texture Stamp SOP is a HDA that allows you to procedurally texture any geometry with an unlimited number of quads acting as image projections.
+
+@Parameters
+=== Stamp Controls ===
+
+Use Texture:
+    Enables loading a texture from disk as the background for projections and exports.
+
+Background Texture:
+    If enabled, specify the path to the background texture.
+
+BG Colour Space:
+    OCIO Colour space for the imported background texture.
+
+Use Default Stamp:
+    Overrides all stamp projection textures with the current default stamp.
+
+Default Stamp:
+    The texture path for the default stamp image. This default stamp texture will be used if there is no `s@stamppath` primitive attribute found, or if the `Use Default Stamp` override has been enabled.
+
+Stamp Colour Space:
+    OCIO Colour space for any imported stamp texture.
+
+Flip Stamp U:
+    Flips the UV space horizontally for any imported stamp textures.
+
+Reverse Stamp Normals:
+    Reverses the projection direction for any input projection grids.
+
+Cull by Dot Product:
+    Enables a projection cull for any textures that go beyond a threshold angle difference.
+
+Cull Ratio:
+    Controls the projection cull angle falloff ratio.
+
+=== Output Controls ===
+
+Render:
+    Renders and exports the current texture projection to the current `Output Picture` path.
