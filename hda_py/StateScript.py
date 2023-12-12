@@ -1,8 +1,6 @@
 import hou
 import viewerstate.utils as vsu
 
-from typing import Any
-
 HDA_VERSION = 1.0
 HDA_AUTHOR = "aaronsmith.tv"
 
@@ -36,6 +34,8 @@ class StampCursor(object):
         self.last_uvw = hou.Vector3()
 
         self.prompt = self.PROMPT
+
+        self.resizing = False
 
     def init_pointer_drawable(self):
         """Create the advanced drawable and return it to self.drawable"""
@@ -316,6 +316,9 @@ class StampCursor(object):
 
 
 class State(object):
+
+    RESIZE_ACCURATE_MODE = 0.2
+
     def __init__(self, state_name, scene_viewer):
         self.state_name = state_name
         self.scene_viewer = scene_viewer
@@ -327,6 +330,9 @@ class State(object):
         self.grid_sizey = 0.5
 
         self.grid_dist = 1.0
+
+        self.last_mouse_x = 0.0
+        self.last_mouse_y = 0.0
 
     def onMouseEvent(self, kwargs):
         """ Process mouse events
@@ -388,9 +394,89 @@ class State(object):
     def onExit(self, kwargs: dict) -> None:
         vsu.Menu.clear()
 
-    def begin_undo_block(self) -> None:
+    def resize_by_ui_event(
+        self, node: hou.Node, started_resizing: bool, ui_event: hou.ViewerEvent
+    ) -> None:
+        """Given a UI event and condition for resizing, resize the cursor with the current parameter size."""
+        mouse_x = ui_event.device().mouseX()
+        mouse_y = ui_event.device().mouseY()
+        # using the cached mouse pos, add the current mouse pos
+        # to the old pos to get a distance (used as new radius multiplier)
+        dist = -self.last_mouse_x + mouse_x
+        dist += -self.last_mouse_y + mouse_y
+        self.last_mouse_x = mouse_x
+        self.last_mouse_y = mouse_y
+        if started_resizing:
+            self.begin_undo_block("Projection Grid Resize")
+            pass
+        # self.resize_cursor(node, dist)
+        if ui_event.reason() == hou.uiEventReason.Changed:
+            # closes the current brush undo block
+            self.cursor.resizing = False
+            self.end_undo_block()
+
+    def shift_key_resize_event(
+        self, started_resizing: bool, ui_event: hou.ViewerEvent
+    ) -> bool:
+        if (
+            ui_event.reason() == hou.uiEventReason.Start
+            and ui_event.device().isShiftKey()
+            and not ui_event.device().isCtrlKey()
+            and not ui_event.device().isMiddleButton()
+        ):
+            # if stroke has begun, enable resizing and cache mouse position
+            self.cursor.resizing = True
+            started_resizing = True
+            self.last_mouse_x = ui_event.device().mouseX()
+            self.last_mouse_y = ui_event.device().mouseY()
+        return started_resizing
+
+    def onMouseWheelEvent(self, kwargs: dict) -> None:
+        """Called whenever the mouse wheel moves.
+
+        Default behaviour is to resize the cursor.
+
+        Override this to do different things on mouse wheel.
+
+        This contains the standard onMouseWheelEvent kwargs specified in the
+        Houdini viewer state documentation.
+        """
+        ui_event = kwargs["ui_event"]
+        node = kwargs["node"]
+
+        dist = ui_event.device().mouseWheel()
+        dist *= 10.0
+
+        # Slow resizing enabled on shift key
+        if ui_event.device().isShiftKey() is True:
+            dist *= State.RESIZE_ACCURATE_MODE
+
+        # middle mouse event refreshes the parm enough times to create
+        # unnecessary undo spam - this disables resize_cursor undos
+        with hou.undos.disabler():
+            self.resize_cursor(node, dist)
+
+    def resize_cursor(self, node: hou.Node, dist: float) -> None:
+        """Adjusts the current stroke radius by a requested bump.
+
+        Used internally.
+        """
+        scale = pow(1.01, dist)
+        resize_radiusx = node.parm("vs_sizex")
+        resize_radiusy = node.parm("vs_sizey")
+
+        radx = resize_radiusx.evalAsFloat()
+        radx *= scale
+
+        rady = resize_radiusy.evalAsFloat()
+        rady *= scale
+
+        resize_radiusx.set(radx)
+        resize_radiusy.set(rady)
+
+    def begin_undo_block(self, reason: str = "") -> None:
         try:
-            self.scene_viewer.beginStateUndo("Add projection primitive")
+            self.scene_viewer.beginStateUndo(reason)
         except Exception as e:
             self.end_undo_block()
 
@@ -401,7 +487,7 @@ class State(object):
         if self.pressed or node.parent().type().name() != "geo":
             return
 
-        self.begin_undo_block()
+        self.begin_undo_block("Add projection primitive")
 
         parent = node.parent()
         input_node = node.input(1)
