@@ -319,9 +319,31 @@ class State(object):
 
     RESIZE_ACCURATE_MODE = 0.2
 
+    HUD_TEMPLATE = {
+        "title": "Texture Stamp",
+        "desc": f"{HDA_VERSION}",
+        "icon": "opdef:/aaron_smith::Sop/image_stamp::1.0?IconSVG",
+        "rows": [
+            {"id": "infodiv", "type": "divider", "label": "aaronsmith.tv"},
+            {
+                "id": "primsize_act",
+                "label": "Change Projection Prim Size",
+                "key": "Shift LMB",
+            },
+            {
+                "id": "primdist_act",
+                "label": "Change Projection Prim Distance",
+                "key": "mouse_wheel",
+            },
+        ],
+    }
+
     def __init__(self, state_name, scene_viewer):
         self.state_name = state_name
         self.scene_viewer = scene_viewer
+
+        self.scene_viewer.hudInfo(template=self.HUD_TEMPLATE)
+
         self.cursor = StampCursor(self.scene_viewer, self.state_name)
 
         self.pressed = False
