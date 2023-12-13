@@ -11,7 +11,7 @@ The Texture Stamp HDA for Houdini is a simple, intuitive and user-friendly tool 
 - **Full OCIO Compatibility**: Your texture and stamped images are into separate colour spaces? No problem! Choose how all imports and exports behave.
 
 ## Installation
-Download the HDA file and install in your `houdini19.5/otls/` folder. For detailed instructions, please refer to the [Houdini documentation](https://www.sidefx.com/docs/houdini/assets/install.html).
+Download the HDA file and install in your `houdini20.0/otls/` folder. For detailed instructions, please refer to the [Houdini documentation](https://www.sidefx.com/docs/houdini/assets/install.html).
 
 ## Quick Start
 After installing Texture-Stamp, your first step to stamping will be to connect your desired input geometry to the first input of the Texture-Stamp node. This geometry should have a UV set, so the base texture you want to stamp on can be evaluated and read correctly.
@@ -19,6 +19,8 @@ After installing Texture-Stamp, your first step to stamping will be to connect y
 Once you have your first input geometry, it's time to start stamping! Enter the HDA's viewer state by pressing Enter on your viewport, where if your mouse is hovering over the mesh, you should see a pointer and guide to show you where the projection (and its direction) will be.
 
 Click on the mesh and a square primitive will be created. This is a *projection mesh* - it is a UVed polygon quad that will be used in casting an orthographic projection onto the UV set of your currently selected mesh. This projection will stamp the HDA's default texture onto your mesh.
+
+If you want to change the distance from the surface at which the projection primitive is placed, you can use `MMB` scrolling to place them further away. You can also use `Shift + LMB Drag` to change the size of the next primitive. 
 
 You can connect your own projection primitives to the second input of the HDA, where each quad will act as its own stamping projection. Be aware that each quad will require its own UV set, and normals, as these are what determine the position of the stamp, and its direction. The projection will be exactly the same size as the quad.
 
