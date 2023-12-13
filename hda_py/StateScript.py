@@ -334,32 +334,35 @@ class State(object):
         self.last_mouse_x = 0.0
         self.last_mouse_y = 0.0
 
+        self.last_mouse_point = hou.Vector3()
+        self.last_mouse_dir = hou.Vector3()
+
     def onMouseEvent(self, kwargs):
         """ Process mouse events
         """
         ui_event = kwargs["ui_event"]
         dev = ui_event.device()
         node = kwargs["node"]
-
         geometry = node.geometry()
-        mouse_point, mouse_dir = ui_event.ray()
+
+        # SHIFT DRAG RESIZING
+        started_resizing = False
+        started_resizing = self.shift_key_resize_event(started_resizing, ui_event)
+
+        if self.cursor.resizing:
+            self.resize_by_ui_event(node, started_resizing, ui_event, geometry)
+            return
+        self.last_mouse_point, self.last_mouse_dir = ui_event.ray()
 
         self.cursor.update_model_xform(ui_event.curViewport())
 
         hit = self.cursor.update_position(
             node=node,
-            mouse_point=mouse_point,
-            mouse_dir=mouse_dir,
+            mouse_point=self.last_mouse_point,
+            mouse_dir=self.last_mouse_dir,
             intersect_geometry=geometry,
         )
-        self.grid_sizex = node.parm("vs_sizex").evalAsFloat()
-        self.grid_sizey = node.parm("vs_sizey").evalAsFloat()
-        self.grid_dist = node.parm("vs_dist").evalAsFloat()
-
-        self.cursor.update_quad_size(
-            hou.Vector2(self.grid_sizex, self.grid_sizey)
-        )
-        self.cursor.update_line_height(self.grid_dist)
+        self.resize_viewer_handle(node)
 
         if hit:
             self.cursor.show()
@@ -375,6 +378,15 @@ class State(object):
 
         # Must return True to consume the event
         return False
+
+    def resize_viewer_handle(self, node):
+        self.grid_sizex = node.parm("vs_sizex").evalAsFloat()
+        self.grid_sizey = node.parm("vs_sizey").evalAsFloat()
+        self.grid_dist = node.parm("vs_dist").evalAsFloat()
+        self.cursor.update_quad_size(
+            hou.Vector2(self.grid_sizex, self.grid_sizey)
+        )
+        self.cursor.update_line_height(self.grid_dist)
 
     def onDraw(self, kwargs):
         """ This callback is used for rendering the drawables
@@ -395,7 +407,7 @@ class State(object):
         vsu.Menu.clear()
 
     def resize_by_ui_event(
-        self, node: hou.Node, started_resizing: bool, ui_event: hou.ViewerEvent
+        self, node: hou.Node, started_resizing: bool, ui_event: hou.ViewerEvent, geometry: hou.Geometry
     ) -> None:
         """Given a UI event and condition for resizing, resize the cursor with the current parameter size."""
         mouse_x = ui_event.device().mouseX()
@@ -409,7 +421,18 @@ class State(object):
         if started_resizing:
             self.begin_undo_block("Projection Grid Resize")
             pass
-        # self.resize_cursor(node, dist)
+        self.set_size_cursor(node, dist)
+
+        self.cursor.update_model_xform(ui_event.curViewport())
+
+        hit = self.cursor.update_position(
+            node=node,
+            mouse_point=self.last_mouse_point,
+            mouse_dir=self.last_mouse_dir,
+            intersect_geometry=geometry,
+        )
+        self.resize_viewer_handle(node)
+
         if ui_event.reason() == hou.uiEventReason.Changed:
             # closes the current brush undo block
             self.cursor.resizing = False
@@ -452,15 +475,24 @@ class State(object):
             dist *= State.RESIZE_ACCURATE_MODE
 
         # middle mouse event refreshes the parm enough times to create
-        # unnecessary undo spam - this disables resize_cursor undos
+        # unnecessary undo spam - this disables set_size_cursor undos
         with hou.undos.disabler():
-            self.resize_cursor(node, dist)
+            self.set_dist_cursor(node, dist)
 
-    def resize_cursor(self, node: hou.Node, dist: float) -> None:
-        """Adjusts the current stroke radius by a requested bump.
+            geometry = node.geometry()
 
-        Used internally.
-        """
+            self.cursor.update_model_xform(ui_event.curViewport())
+
+            hit = self.cursor.update_position(
+                node=node,
+                mouse_point=self.last_mouse_point,
+                mouse_dir=self.last_mouse_dir,
+                intersect_geometry=geometry,
+            )
+            self.resize_viewer_handle(node)
+
+
+    def set_size_cursor(self, node: hou.Node, dist: float) -> None:
         scale = pow(1.01, dist)
         resize_radiusx = node.parm("vs_sizex")
         resize_radiusy = node.parm("vs_sizey")
@@ -473,6 +505,16 @@ class State(object):
 
         resize_radiusx.set(radx)
         resize_radiusy.set(rady)
+
+    def set_dist_cursor(self, node: hou.Node, dist: float) -> None:
+        scale = pow(1.01, dist)
+        resize_radius = node.parm("vs_dist")
+
+        rad = resize_radius.evalAsFloat()
+        rad *= scale
+
+        resize_radius.set(rad)
+
 
     def begin_undo_block(self, reason: str = "") -> None:
         try:
