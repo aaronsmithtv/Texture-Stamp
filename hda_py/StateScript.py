@@ -627,11 +627,10 @@ class State(object):
         uv_node = parent.createNode("uvunwrap", "projection_uvunwrap")
         uv_node.parm("spacing").set(0)
 
-        merge.setNextInput(uv_node)
-
-        uv_node.setNextInput(norm_node)
+        merge.setNextInput(norm_node)
         norm_node.setNextInput(xform_node)
-        xform_node.setNextInput(grid_node)
+        xform_node.setNextInput(uv_node)
+        uv_node.setNextInput(grid_node)
 
 
 def createViewerStateTemplate():
