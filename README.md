@@ -9,6 +9,7 @@ The Texture Stamp HDA for Houdini is a simple, intuitive and user-friendly tool 
 - **Procedural By Design**: Scatter thousands of projections onto a single geometry, or precisely tune how you want your projections to behave.
 - **Extendable With Custom Attributes**: Use the primitive attribute `s@stamppath` to have unlimited choice in the image you stamp, or use `v@stampcolor` to visualize different takes on your current stamped images.
 - **Full OCIO Compatibility**: Your texture and stamped images are into separate colour spaces? No problem! Choose how all imports and exports behave.
+- **UDIM Detection**: Any incoming geometry with extra UDIM tiles (UV ranges beyond 1) will have corresponding numbers and names read and applied, allowing you to have a streamlined and automated UDIM workflow.
 
 ## Installation
 Download the HDA file and install in your `houdini20.0/otls/` folder. For detailed instructions, please refer to the [Houdini documentation](https://www.sidefx.com/docs/houdini/assets/install.html).
