@@ -97,4 +97,17 @@ Resolution:
 
     The import and export resolution of both the background texture and final product of any stamp projections.
 
+Output UDIM:
+    #id: display_udim
+
+    An auto-generated menu list of UDIM tiles detected on the Geometry input. This is used to select a specific UDIM to export to & from, and will also always be the first tile to visualize and export.
+
+Export All Detected UDIMs:
+    #id: export_all_udims
+
+    If a default Houdini `<udim>` tag is detected, this will export all detected UDIM tiles in use as individual texture files, and display them upon creation.
+
+    WARNING:
+        If there are multiple UDIMs detected, the texture will only display upon being written to disk.
+
 """Aaron Smith 2023"""
