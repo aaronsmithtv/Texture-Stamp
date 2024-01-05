@@ -1,7 +1,11 @@
 # <img src="https://static.sidefx.com/images/apple-touch-icon.png" width="25" height="25" alt="Hbuild Logo"> Texture Stamp HDA for Houdini 20
 
-The Texture Stamp HDA for Houdini is a simple, intuitive and user-friendly tool designed to make projecting an image onto a geometry texture (stamping) easier, in a procedural workflow.
+![license](https://img.shields.io/badge/license-MIT-green) ![version](https://img.shields.io/badge/version-1.0-blue) 
 
+
+### 🌠 The Texture Stamp HDA for Houdini is a simple, intuitive and user-friendly tool designed to make projecting an image onto a geometry texture (stamping) easier, in a procedural workflow.
+
+![Stamp Interactive Demo](examples/images/stamp_tool_demo.gif)
 
 ## Key Features
 - **No Setup Required**: The HDA does not need you to do anything other than tell it where the images should go, click on your mesh and start stamping!
@@ -33,6 +37,8 @@ If you disable the default stamp texture path, you will see an error icon appear
 You can also use the `v@stampcolor` attribute to multiply the colour of your stamp texture with the vector attribute.
 
 If you want to change the amount of backface culling that takes place, you can change the threshold at which the projection is culled using the cull ratio ramp parameter.
+
+![Stamp Attrib Demo](examples/images/stamp_tool_sticker.gif)
 
 ## Feedback
 If you have any feedback or run into issues, please feel free to open an issue on this GitHub project. I really appreciate your support!
